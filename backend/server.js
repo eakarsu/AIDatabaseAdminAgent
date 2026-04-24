@@ -1,0 +1,5 @@
+const express=require('express'),cors=require('cors');require('dotenv').config({path:'../.env'});
+const app=express();app.use(cors());app.use(express.json({limit:'10mb'}));const pool=require('./models/db');
+app.use('/api/auth',require('./routes/auth'));app.use('/api/databases',require('./routes/databases'));app.use('/api/queries',require('./routes/queries'));app.use('/api/indexes',require('./routes/indexes'));app.use('/api/backups',require('./routes/backups'));app.use('/api/agents',require('./routes/agents'));
+app.get('/api/stats',async(q,s)=>{try{const d=await pool.query('SELECT COUNT(*) as total FROM monitored_databases');const sq=await pool.query('SELECT SUM(slow_queries) as total FROM monitored_databases');const idx=await pool.query('SELECT COUNT(*) as total FROM suggested_indexes');const b=await pool.query('SELECT COUNT(*) as total FROM backups');s.json({databases:+d.rows[0].total,slowQueries:+sq.rows[0].total||0,indexes:+idx.rows[0].total,backups:+b.rows[0].total})}catch(e){s.status(500).json({error:e.message})}});
+app.listen(process.env.PORT||3004,()=>console.log(`Server on port ${process.env.PORT||3004}`));

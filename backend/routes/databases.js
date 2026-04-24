@@ -1,0 +1,7 @@
+const express=require('express'),pool=require('../models/db'),auth=require('../middleware/auth'),r=express.Router();
+r.get('/',auth,async(q,s)=>{try{s.json((await pool.query('SELECT * FROM monitored_databases ORDER BY created_at DESC')).rows)}catch(e){s.status(500).json({error:e.message})}});
+r.get('/:id',auth,async(q,s)=>{try{const r=await pool.query('SELECT * FROM monitored_databases WHERE id=$1',[q.params.id]);r.rows.length?s.json(r.rows[0]):s.status(404).json({error:'Not found'})}catch(e){s.status(500).json({error:e.message})}});
+r.post('/',auth,async(q,s)=>{try{const{name,host,port,db_name,db_type,status}=q.body;const r=await pool.query('INSERT INTO monitored_databases(name,host,port,db_name,db_type,status,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *',[name,host,port||5432,db_name,db_type||'PostgreSQL',status||'healthy',q.user.id]);s.status(201).json(r.rows[0])}catch(e){s.status(500).json({error:e.message})}});
+r.put('/:id',auth,async(q,s)=>{try{const{name,host,port,db_name,db_type,status}=q.body;const r=await pool.query('UPDATE monitored_databases SET name=$1,host=$2,port=$3,db_name=$4,db_type=$5,status=$6,updated_at=NOW() WHERE id=$7 RETURNING *',[name,host,port,db_name,db_type,status,q.params.id]);s.json(r.rows[0])}catch(e){s.status(500).json({error:e.message})}});
+r.delete('/:id',auth,async(q,s)=>{try{await pool.query('DELETE FROM monitored_databases WHERE id=$1',[q.params.id]);s.json({message:'Deleted'})}catch(e){s.status(500).json({error:e.message})}});
+module.exports=r;

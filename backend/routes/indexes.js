@@ -1,0 +1,5 @@
+const express=require('express'),pool=require('../models/db'),auth=require('../middleware/auth'),r=express.Router();
+r.get('/',auth,async(q,s)=>{try{s.json((await pool.query('SELECT si.*,md.name as db_name FROM suggested_indexes si LEFT JOIN monitored_databases md ON si.database_id=md.id ORDER BY si.impact_score DESC')).rows)}catch(e){s.status(500).json({error:e.message})}});
+r.post('/',auth,async(q,s)=>{try{const{database_id,table_name,column_name,index_type}=q.body;const r=await pool.query('INSERT INTO suggested_indexes(database_id,table_name,column_name,index_type,impact_score) VALUES($1,$2,$3,$4,$5) RETURNING *',[database_id,table_name,column_name,index_type||'btree',Math.floor(Math.random()*100)]);s.status(201).json(r.rows[0])}catch(e){s.status(500).json({error:e.message})}});
+r.delete('/:id',auth,async(q,s)=>{try{await pool.query('DELETE FROM suggested_indexes WHERE id=$1',[q.params.id]);s.json({message:'Deleted'})}catch(e){s.status(500).json({error:e.message})}});
+module.exports=r;
