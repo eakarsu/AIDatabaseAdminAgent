@@ -1,16 +1,59 @@
-const express = require('express'), bcrypt = require('bcryptjs'), jwt = require('jsonwebtoken'), pool = require('../models/db'), router = express.Router();
-router.post('/login', async (req, res) => {
-  try { const { email, password } = req.body; const r = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (!r.rows.length || !await bcrypt.compare(password, r.rows[0].password)) return res.status(401).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ id: r.rows[0].id, email, name: r.rows[0].name }, process.env.JWT_SECRET || 'supersecretkey123', { expiresIn: '24h' });
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+const pool = require('../models/db');
+const router = express.Router();
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts, please try again later.' },
+});
+
+router.post('/login', authLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
+    const r = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (!r.rows.length || !await bcrypt.compare(password, r.rows[0].password)) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    const token = jwt.sign(
+      { id: r.rows[0].id, email, name: r.rows[0].name },
+      process.env.JWT_SECRET || 'supersecretkey123',
+      { expiresIn: '24h' }
+    );
     res.json({ token, user: { id: r.rows[0].id, email, name: r.rows[0].name } });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
-router.post('/register', async (req, res) => {
-  try { const { email, password, name } = req.body; const h = await bcrypt.hash(password, 10);
-    const r = await pool.query('INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING id, email, name', [email, h, name]);
-    const token = jwt.sign({ id: r.rows[0].id, email, name }, process.env.JWT_SECRET || 'supersecretkey123', { expiresIn: '24h' });
+
+router.post('/register', authLimiter, async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password || !name) return res.status(400).json({ error: 'email, password, and name are required' });
+    if (password.length < 8) return res.status(400).json({ error: 'password must be at least 8 characters' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return res.status(400).json({ error: 'Invalid email format' });
+    const h = await bcrypt.hash(password, 10);
+    const r = await pool.query(
+      'INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING id, email, name',
+      [email, h, name]
+    );
+    const token = jwt.sign(
+      { id: r.rows[0].id, email, name },
+      process.env.JWT_SECRET || 'supersecretkey123',
+      { expiresIn: '24h' }
+    );
     res.status(201).json({ token, user: r.rows[0] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Email already registered' });
+    res.status(500).json({ error: err.message });
+  }
 });
+
 module.exports = router;
