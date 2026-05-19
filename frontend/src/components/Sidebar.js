@@ -10,6 +10,7 @@ const items = [
   { path: '/backup-schedules', label: 'Backup Schedules', icon: '📅' },
   { path: '/agents', label: 'AI Agents', icon: '🤖' },
   { path: '/agents-new', label: 'AI Agents (New)', icon: '✨' },
+  { path: '/custom-views', label: 'DBA Views', icon: '🧭' },
 ];
 
 export default function Sidebar() {

@@ -10,6 +10,7 @@ import BackupsPage from './pages/BackupsPage';
 import AgentsPage from './pages/AgentsPage';
 import AgentsNewPage from './pages/AgentsNewPage';
 import BackupSchedulesPage from './pages/BackupSchedulesPage';
+import CustomViewsPage from './pages/CustomViewsPage';
 
 // // === Batch 02 Gaps & Frontend Mounts ===
 import CfQueryOptimizationAgent from './pages/CfQueryOptimizationAgent';
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/backup-schedules" element={<BackupSchedulesPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/agents-new" element={<AgentsNewPage />} />
+            <Route path="/custom-views" element={<CustomViewsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" />} />
           
         {/* // === Batch 02 Gaps & Frontend Mounts === */}
