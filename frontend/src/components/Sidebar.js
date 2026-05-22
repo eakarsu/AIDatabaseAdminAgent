@@ -11,6 +11,7 @@ const items = [
   { path: '/agents', label: 'AI Agents', icon: '🤖' },
   { path: '/agents-new', label: 'AI Agents (New)', icon: '✨' },
   { path: '/custom-views', label: 'DBA Views', icon: '🧭' },
+  { path: '/failover-drill', label: 'Failover Drill', icon: '🛟' },
 ];
 
 export default function Sidebar() {

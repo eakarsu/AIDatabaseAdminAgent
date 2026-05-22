@@ -66,6 +66,7 @@ const api = {
   createBackupSchedule: (d) => fetch(`${A}/backup-new/schedule`, { method: 'POST', headers: h(), body: JSON.stringify(d) }).then(j),
   getBackupSchedules: () => paged(`${A}/backup-new/schedules`),
   getBackupHistory: () => paged(`${A}/backup-new/history`),
+  failoverDrill: (d) => fetch(`${A}/failover-drill/score`, { method: 'POST', headers: h(), body: JSON.stringify(d) }).then(j),
 };
 
 export default api;

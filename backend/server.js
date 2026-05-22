@@ -69,6 +69,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Dat
 
 // DBA custom views (2 VIZ + 2 NON-VIZ) — mounted BEFORE error/404 handlers
 app.use('/api/custom-views', require('./routes/customViews'));
+app.use('/api/failover-drill', require('./routes/failoverDrill'));
 
 // Error handler — avoid leaking internal stack traces
 app.use((err, req, res, next) => {

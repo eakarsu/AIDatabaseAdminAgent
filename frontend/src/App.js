@@ -26,6 +26,12 @@ import GapNoReplicationFailoverManagement from './pages/GapNoReplicationFailover
 import GapNoEncryptionOrSecurityAuditModule from './pages/GapNoEncryptionOrSecurityAuditModule';
 import GapNoNotificationSystem from './pages/GapNoNotificationSystem';
 
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
+import FailoverDrillPage from './pages/FailoverDrillPage';
+
 export default function App() {
   const [auth, setAuth] = useState(!!localStorage.getItem('token'));
   if (!auth) return <LoginPage onLogin={() => setAuth(true)} />;
@@ -35,6 +41,10 @@ export default function App() {
         <Sidebar />
         <div style={{ marginLeft: 250, flex: 1, minHeight: '100vh' }}>
           <Routes>
+        <Route path="/insights/timeline" element={<TimelineView />} />
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/databases" element={<DatabasesPage />} />
             <Route path="/queries" element={<QueriesPage />} />
@@ -44,6 +54,7 @@ export default function App() {
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/agents-new" element={<AgentsNewPage />} />
             <Route path="/custom-views" element={<CustomViewsPage />} />
+            <Route path="/failover-drill" element={<FailoverDrillPage />} />
             <Route path="*" element={<Navigate to="/dashboard" />} />
           
         {/* // === Batch 02 Gaps & Frontend Mounts === */}
