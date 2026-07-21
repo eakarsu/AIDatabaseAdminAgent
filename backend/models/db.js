@@ -1,4 +1,8 @@
 const { Pool } = require('pg');
 require('dotenv').config({ path: '../.env' });
-const pool = new Pool({ connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/ai_database_admin_db' });
+if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true } : undefined,
+});
 module.exports = pool;

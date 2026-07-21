@@ -1,13 +1,38 @@
-#!/bin/bash
-echo "🗄️ Starting AI Database Admin Agent..."
-for port in 3004 3005; do pid=$(lsof -ti:$port 2>/dev/null); [ ! -z "$pid" ] && kill -9 $pid 2>/dev/null; done
-set -a; source .env; set +a
-psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'ai_database_admin_db'" | grep -q 1 || psql -U postgres -c "CREATE DATABASE ai_database_admin_db"
-psql -U postgres -d ai_database_admin_db -f backend/models/schema.sql
-cd backend && node seeds/seed.js && cd ..
-[ ! -d "backend/node_modules" ] && (cd backend && npm install && cd ..)
-[ ! -d "frontend/node_modules" ] && (cd frontend && npm install && cd ..)
-cd backend && npx nodemon server.js &
-cd ../frontend && PORT=3005 npm start &
-echo "Frontend: http://localhost:3005 | Backend: http://localhost:3004"
-wait
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ ! -f "$project_dir/.env" ]]; then
+  echo "Missing .env; copy .env.example and configure it." >&2
+  exit 1
+fi
+set -a
+# shellcheck disable=SC1091
+source "$project_dir/.env"
+set +a
+
+for dir in "backend" "frontend"; do
+  [[ "$dir" == "." ]] && check="$project_dir/node_modules" || check="$project_dir/$dir/node_modules"
+  if [[ ! -d "$check" ]]; then
+    echo "Dependencies missing for $dir; run scripts/bootstrap.sh." >&2
+    exit 1
+  fi
+done
+
+cleanup() {
+  [[ -n "${backend_pid:-}" ]] && kill "$backend_pid" 2>/dev/null || true
+  [[ -n "${frontend_pid:-}" ]] && kill "$frontend_pid" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+cd "$project_dir/backend"
+npm start &
+backend_pid=$!
+
+cd "$project_dir/frontend"
+PORT="${FRONTEND_PORT:-3005}" npm start &
+frontend_pid=$!
+
+echo "Application processes started. Startup does not install, migrate, seed, or terminate unrelated processes."
+wait "$backend_pid" "$frontend_pid"
+

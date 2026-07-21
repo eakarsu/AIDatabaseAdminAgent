@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be configured with at least 32 characters');
+}
+if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
 
 const { aiRateLimiter } = require('./middleware/rateLimiter');
 const pool = require('./models/db');
@@ -42,6 +46,7 @@ app.use('/api/backups', require('./routes/backups'));
 app.use('/api/agents', aiRateLimiter, require('./routes/agents'));
 app.use('/api/agents-new', require('./routes/agentsNew'));  // already applies aiRateLimiter inside
 app.use('/api/backup-new', require('./routes/backupNew'));
+app.use('/api/governed-workflows', require('./routes/governedWorkflow'));
 
 // Stats with auth (was unprotected before)
 const auth = require('./middleware/auth');
@@ -71,33 +76,12 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Dat
 app.use('/api/custom-views', require('./routes/customViews'));
 app.use('/api/failover-drill', require('./routes/failoverDrill'));
 
-// Error handler — avoid leaking internal stack traces
+const PORT = process.env.PORT || 3004;
+// Error handler — avoid leaking internal stack traces.
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
-
-const PORT = process.env.PORT || 3004;
-// // === Batch 02 Gaps & Frontend Mounts ===
-app.use('/api/gap-missing-optimize-query-analyze-slow-queries-recommend-indexe', require('./routes/gap_missing_optimize_query_analyze_slow_queries_recommend_indexe'));
-
-// // === Batch 02 Gaps & Frontend Mounts ===
-app.use('/api/gap-no-connection-pooling-or-driver-management-module', require('./routes/gap_no_connection_pooling_or_driver_management_module'));
-
-// // === Batch 02 Gaps & Frontend Mounts ===
-app.use('/api/gap-no-real-time-monitoring-alerting-beyond-stubs', require('./routes/gap_no_real_time_monitoring_alerting_beyond_stubs'));
-
-// // === Batch 02 Gaps & Frontend Mounts ===
-app.use('/api/gap-limited-cloud-db-integrations-no-aws-rds-azure-sql-gcp-cloud', require('./routes/gap_limited_cloud_db_integrations_no_aws_rds_azure_sql_gcp_cloud'));
-
-// // === Batch 02 Gaps & Frontend Mounts ===
-app.use('/api/gap-no-replication-failover-management', require('./routes/gap_no_replication_failover_management'));
-
-// // === Batch 02 Gaps & Frontend Mounts ===
-app.use('/api/gap-no-encryption-or-security-audit-module', require('./routes/gap_no_encryption_or_security_audit_module'));
-
-// // === Batch 02 Gaps & Frontend Mounts ===
-app.use('/api/gap-no-notification-system', require('./routes/gap_no_notification_system'));
 
 app.listen(PORT, () => {
   console.log(`Server on port ${PORT}`);
