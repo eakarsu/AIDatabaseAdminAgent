@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const pool = require('../models/db');
+const auth = require('../middleware/auth');
 const router = express.Router();
 
 const authLimiter = rateLimit({
@@ -53,6 +54,19 @@ router.post('/register', authLimiter, async (req, res) => {
     res.status(201).json({ token, user: r.rows[0] });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Email already registered' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/me', auth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, name, role, tenant_id FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
+    res.json({ user: result.rows[0] });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

@@ -1,4 +1,4 @@
-const A = 'http://localhost:3004/api';
+const A = '/api';
 const h = () => {
   const t = localStorage.getItem('token');
   return { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) };

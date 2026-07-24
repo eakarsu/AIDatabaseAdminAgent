@@ -25,7 +25,8 @@ async function callLLM(userPayload) {
     throw err;
   }
   const fetchFn = global.fetch || (await import('node-fetch')).default;
-  const response = await fetchFn('https://openrouter.ai/api/v1/chat/completions', {
+  const baseUrl = (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, '');
+  const response = await fetchFn(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${OPENROUTER_API_KEY}`,
