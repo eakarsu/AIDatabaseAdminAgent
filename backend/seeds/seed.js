@@ -1,10 +1,16 @@
 const { Pool } = require('pg'); const bcrypt = require('bcryptjs');
 require('dotenv').config({ path: '../../.env' });
 const pool = new Pool({ connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/ai_database_admin_db' });
+function requireDemoPassword() {
+  const password = process.env.DEMO_PASSWORD || process.env.SEED_DEMO_PASSWORD || process.env.DEMO_SEED_PASSWORD || '';
+  if (password.length < 12 || password.length > 1024) throw new Error('DEMO_PASSWORD must contain 12-1024 characters');
+  return password;
+}
+
 async function seed() {
   try {
     await pool.query('DELETE FROM db_logs'); await pool.query('DELETE FROM backups'); await pool.query('DELETE FROM suggested_indexes'); await pool.query('DELETE FROM query_logs'); await pool.query('DELETE FROM monitored_databases'); await pool.query('DELETE FROM users');
-    const h = await bcrypt.hash('admin123', 10);
+    const h = await bcrypt.hash(requireDemoPassword(), 10);
     const u = await pool.query("INSERT INTO users (email,password,name) VALUES ('admin@example.com',$1,'Admin User') RETURNING id",[h]);
     const uid = u.rows[0].id;
     const dbs = [
