@@ -3,18 +3,24 @@ const h = () => {
   const t = localStorage.getItem('token');
   return { 'Content-Type': 'application/json', ...(t ? { Authorization: `Bearer ${t}` } : {}) };
 };
-const j = (r) => r.json();
+const j = async (r) => {
+  const body = await r.json();
+  if (!r.ok) throw new Error(body?.error || body?.message || `Request failed (${r.status})`);
+  return body;
+};
 
 // Helpers that handle paginated {data,pagination} response shape
 const paged = async (url) => {
   const r = await fetch(url, { headers: h() }).then(j);
   if (r && Array.isArray(r.data)) return r.data;
-  return Array.isArray(r) ? r : [];
+  if (Array.isArray(r)) return r;
+  throw new Error(`Expected a record list from ${url}`);
 };
 const pagedFull = async (url) => {
   const r = await fetch(url, { headers: h() }).then(j);
   if (r && Array.isArray(r.data)) return r;
-  return { data: Array.isArray(r) ? r : [], pagination: null };
+  if (Array.isArray(r)) return { data: r, pagination: null };
+  throw new Error(`Expected a record list from ${url}`);
 };
 
 const api = {

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import api from '../services/api';
+import AIReport from '../components/AIReport';
+import { agentPreset, agentPresetNeedsDatabase } from './agentPresets';
 
-const FEATURES = [
+export const FEATURES = [
   {
     key: 'query-analyze',
     title: 'Query Analyzer',
@@ -190,41 +192,6 @@ const FEATURES = [
   },
 ];
 
-function renderResult(obj, depth = 0) {
-  if (obj === null || obj === undefined) return null;
-  if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
-    return (
-      <span style={{
-        color: typeof obj === 'number' ? '#2ecc71' : (typeof obj === 'boolean' ? (obj ? '#2ecc71' : '#e94560') : '#e0e0e0'),
-        fontWeight: typeof obj !== 'string' ? 'bold' : 'normal',
-      }}>{String(obj)}</span>
-    );
-  }
-  if (Array.isArray(obj)) {
-    return (
-      <div style={{ marginLeft: depth * 12 }}>
-        {obj.map((item, i) => (
-          <div key={i} style={{ background: '#1a1a2e', padding: 10, borderRadius: 8, marginBottom: 6, borderLeft: '3px solid #e94560' }}>
-            {typeof item === 'object' ? renderResult(item, depth + 1) : <span style={{ color: '#e0e0e0' }}>{String(item)}</span>}
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div style={{ marginLeft: depth * 8 }}>
-      {Object.entries(obj).map(([k, v]) => (
-        <div key={k} style={{ marginBottom: 10 }}>
-          <div style={{ color: '#e94560', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 3 }}>{k.replace(/_/g, ' ')}</div>
-          {typeof v === 'object' && v !== null
-            ? renderResult(v, depth + 1)
-            : <div style={{ color: '#e0e0e0', background: '#1a1a2e', padding: '6px 10px', borderRadius: 6, fontSize: 13 }}>{renderResult(v)}</div>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function FeatureCard({ feature }) {
   const [formData, setFormData] = useState({});
   const [result, setResult] = useState(null);
@@ -277,6 +244,8 @@ function FeatureCard({ feature }) {
 
       {expanded && (
         <form onSubmit={submit}>
+          <div className="ai-preset-bar"><div><strong>Fill every field</strong><p>Review these example inputs before running the agent.</p></div><div className="ai-actions">{['Operations example', 'Review example'].map((label, index) => <button key={label} type="button" className="btn btn-secondary" disabled={loading} onClick={() => { setFormData(agentPreset(feature, index, formData)); setResult(null); setError(null); }}>{label}</button>)}</div></div>
+          {agentPresetNeedsDatabase(feature) && <p role="note" style={{ color: '#a0a0b0' }}>Database ID is left as selected or entered. Choose a real database record if this analysis requires one.</p>}
           {feature.fields.map(f => (
             <div key={f.name}>
               <label style={{ color: '#a0a0b0', fontSize: 11, display: 'block', marginBottom: 3 }}>
@@ -317,19 +286,7 @@ function FeatureCard({ feature }) {
 
           {error && <div style={{ marginTop: 12, padding: 10, background: '#e9456020', border: '1px solid #e94560', borderRadius: 6, color: '#e94560', fontSize: 13 }}>{error}</div>}
 
-          {result && (
-            <div style={{ marginTop: 12, background: '#0f0f1a', borderRadius: 8, padding: 12, border: '1px solid #0f3460', maxHeight: 500, overflow: 'auto' }}>
-              {result.cached && (
-                <div style={{ display: 'inline-block', padding: '2px 8px', background: '#2ecc7120', color: '#2ecc71', borderRadius: 4, fontSize: 10, fontWeight: 'bold', marginBottom: 8 }}>
-                  ✓ CACHED
-                </div>
-              )}
-              {result.model && (
-                <div style={{ color: '#a0a0b0', fontSize: 10, marginBottom: 8 }}>Model: {result.model}</div>
-              )}
-              {renderResult(result)}
-            </div>
-          )}
+          {result && <AIReport response={result} title={feature.title} />}
         </form>
       )}
     </div>

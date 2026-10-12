@@ -7,6 +7,11 @@ const pool = require('../models/db');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
+function loginResponse(row) {
+  const user = { id: row.id, email: row.email, name: row.name, role: row.role, tenant_id: row.tenant_id };
+  return { token: jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '24h' }), user };
+}
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -23,14 +28,23 @@ router.post('/login', authLimiter, async (req, res) => {
     if (!r.rows.length || !await bcrypt.compare(password, r.rows[0].password)) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    const token = jwt.sign(
-      { id: r.rows[0].id, email, name: r.rows[0].name, role: r.rows[0].role, tenant_id: r.rows[0].tenant_id },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-    res.json({ token, user: { id: r.rows[0].id, email, name: r.rows[0].name, role: r.rows[0].role, tenant_id: r.rows[0].tenant_id } });
+    res.json(loginResponse(r.rows[0]));
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/demo-login', authLimiter, async (_req, res) => {
+  if (process.env.ENABLE_DEMO_CREDENTIAL_AUTOFILL !== 'true') return res.status(503).json({ error: 'Demo login is disabled in this environment.' });
+  const email = process.env.DEMO_EMAIL;
+  const password = process.env.DEMO_PASSWORD;
+  if (!email || !password) return res.status(503).json({ error: 'Demo credentials are not configured.' });
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (!result.rows.length || !await bcrypt.compare(password, result.rows[0].password)) return res.status(503).json({ error: 'The configured demo account is unavailable.' });
+    res.json(loginResponse(result.rows[0]));
+  } catch (_) {
+    res.status(503).json({ error: 'Demo login is unavailable. Check the database connection.' });
   }
 });
 

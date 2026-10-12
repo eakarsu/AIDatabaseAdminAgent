@@ -1,10 +1,47 @@
-import React,{useState}from'react';import api from'../services/api';
-export default function AgentsPage(){const[tab,setTab]=useState('query'),[input,setInput]=useState(''),[result,setResult]=useState(null),[loading,setLoading]=useState(false);
-const run=async fn=>{setLoading(true);setResult(null);try{setResult(await fn())}catch(e){setResult({error:e.message})}setLoading(false)};
-const renderResult=(obj,depth=0)=>{if(!obj)return null;if(typeof obj==='string')return<p style={{color:'#e0e0e0',lineHeight:1.6,whiteSpace:'pre-wrap'}}>{obj}</p>;if(Array.isArray(obj))return<div style={{marginLeft:depth*12}}>{obj.map((item,i)=><div key={i} style={{background:'#1a1a2e',padding:12,borderRadius:8,marginBottom:8,borderLeft:'3px solid #e94560'}}>{typeof item==='object'?renderResult(item,depth+1):<span style={{color:'#e0e0e0'}}>{String(item)}</span>}</div>)}</div>;return<div style={{marginLeft:depth*12}}>{Object.entries(obj).map(([k,v])=><div key={k} style={{marginBottom:12}}><div style={{color:'#e94560',fontSize:13,fontWeight:'bold',textTransform:'uppercase',marginBottom:4}}>{k.replace(/_/g,' ')}</div>{typeof v==='object'&&v!==null?renderResult(v,depth+1):<div style={{color:'#e0e0e0',background:'#1a1a2e',padding:'8px 12px',borderRadius:6,fontSize:14}}>{typeof v==='number'?<span style={{color:'#2ecc71',fontWeight:'bold',fontSize:18}}>{v}</span>:typeof v==='boolean'?<span style={{color:v?'#2ecc71':'#e94560',fontWeight:'bold'}}>{v?'Yes':'No'}</span>:String(v)}</div>}</div>)}</div>;};
-const inp={width:'100%',padding:'10px 14px',background:'#1a1a2e',border:'1px solid #0f3460',borderRadius:8,color:'#e0e0e0',fontSize:14,marginBottom:12,outline:'none',minHeight:100,resize:'vertical',fontFamily:'monospace'};
-return(<div style={{padding:30}}><h1 style={{fontSize:24,color:'#e0e0e0',marginBottom:24}}>AI Agents</h1><div style={{display:'flex',gap:4,marginBottom:24}}>{[['query','🔍 Query Optimizer'],['index','📑 Index Advisor'],['health','❤️ Health Check']].map(([k,l])=><button key={k} style={{padding:'10px 20px',background:tab===k?'#e94560':'#16213e',color:tab===k?'#fff':'#a0a0b0',border:'none',borderRadius:'8px 8px 0 0',cursor:'pointer',fontSize:14,fontWeight:tab===k?'bold':'normal'}} onClick={()=>{setTab(k);setResult(null)}}>{l}</button>)}</div>
-<div style={{background:'#16213e',borderRadius:12,padding:24,border:'1px solid #0f3460'}}>{tab==='query'&&<><label style={{color:'#a0a0b0',fontSize:12}}>SQL Query to Optimize</label><textarea style={inp} value={input} onChange={e=>setInput(e.target.value)} placeholder="SELECT * FROM users WHERE created_at > '2024-01-01' ORDER BY name"/><button style={{padding:'12px 24px',background:'#e94560',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:'bold'}} onClick={()=>run(()=>api.analyzeQuery({query:input}))} disabled={loading}>{loading?'⏳ Analyzing...':'🔍 Optimize Query'}</button></>}
-{tab==='index'&&<><label style={{color:'#a0a0b0',fontSize:12}}>Table Information (JSON)</label><textarea style={inp} value={input} onChange={e=>setInput(e.target.value)} placeholder='{"table": "users", "columns": ["id", "email", "created_at"], "row_count": 1000000}'/><button style={{padding:'12px 24px',background:'#e94560',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:'bold'}} onClick={()=>run(()=>api.suggestIndexes({table_info:input}))} disabled={loading}>{loading?'⏳ Analyzing...':'📑 Suggest Indexes'}</button></>}
-{tab==='health'&&<><label style={{color:'#a0a0b0',fontSize:12}}>Database Metrics (JSON)</label><textarea style={inp} value={input} onChange={e=>setInput(e.target.value)} placeholder='{"cpu_usage": 75, "memory_usage": 82, "disk_usage": 60, "connections": 150, "slow_queries": 23}'/><button style={{padding:'12px 24px',background:'#e94560',color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:'bold'}} onClick={()=>run(()=>api.healthCheck({metrics:input}))} disabled={loading}>{loading?'⏳ Checking...':'❤️ Health Check'}</button></>}</div>
-{result&&<div style={{marginTop:24,background:'#16213e',borderRadius:12,padding:24,border:'1px solid #0f3460'}}><div style={{color:'#e94560',fontSize:16,fontWeight:'bold',marginBottom:16,paddingBottom:12,borderBottom:'1px solid #0f3460'}}>🤖 AI Analysis Result</div>{result.error?<div style={{color:'#e94560'}}>{result.error}</div>:renderResult(result)}</div>}</div>);}
+import React, { useState } from 'react';
+import api from '../services/api';
+import AIReport from '../components/AIReport';
+
+const examples = {
+  query: [
+    "SELECT customer_id, COUNT(*) FROM orders WHERE created_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY customer_id;",
+    'SELECT id, status FROM invoices WHERE account_id = $1 ORDER BY issued_at DESC LIMIT 50;',
+  ],
+  index: [
+    JSON.stringify({ table: 'orders', columns: ['id', 'customer_id', 'created_at'], row_count: 120000 }),
+    JSON.stringify({ table: 'invoices', columns: ['id', 'account_id', 'issued_at'], row_count: 480000 }),
+  ],
+  health: [
+    JSON.stringify({ cpu_usage: 75, memory_usage: 82, disk_usage: 60, connections: 150, slow_queries: 23 }),
+    JSON.stringify({ cpu_usage: 32, memory_usage: 58, disk_usage: 78, connections: 47, slow_queries: 2 }),
+  ],
+};
+const tabs = [
+  ['query', '🔍 Query Optimizer', 'SQL Query to Optimize', '🔍 Optimize Query'],
+  ['index', '📑 Index Advisor', 'Table Information (JSON)', '📑 Suggest Indexes'],
+  ['health', '❤️ Health Check', 'Database Metrics (JSON)', '❤️ Health Check'],
+];
+const calls = { query: (input) => api.analyzeQuery({ query: input }), index: (input) => api.suggestIndexes({ table_info: input }), health: (input) => api.healthCheck({ metrics: input }) };
+const inputStyle = { width: '100%', padding: '10px 14px', background: '#1a1a2e', border: '1px solid #0f3460', borderRadius: 8, color: '#e0e0e0', fontSize: 14, marginBottom: 12, minHeight: 100, fontFamily: 'monospace' };
+export default function AgentsPage() {
+  const [tab, setTab] = useState('query');
+  const [inputs, setInputs] = useState({ query: '', index: '', health: '' });
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const active = tabs.find(([key]) => key === tab);
+  const run = async () => {
+    setLoading(true); setResult(null);
+    try { setResult(await calls[tab](inputs[tab])); }
+    catch (error) { setResult({ error: error.message }); }
+    finally { setLoading(false); }
+  };
+  return <div style={{ padding: 30 }}><h1 style={{ fontSize: 24, color: '#e0e0e0', marginBottom: 24 }}>AI Agents</h1>
+    <div style={{ display: 'flex', gap: 4, marginBottom: 24 }}>{tabs.map(([key, label]) => <button key={key} type="button" style={{ padding: '10px 20px', background: tab === key ? '#e94560' : '#16213e', color: tab === key ? '#fff' : '#a0a0b0', border: 'none', borderRadius: '8px 8px 0 0', cursor: 'pointer' }} onClick={() => { setTab(key); setResult(null); }}>{label}</button>)}</div>
+    <div style={{ background: '#16213e', borderRadius: 12, padding: 24, border: '1px solid #0f3460' }}>
+      <div className="ai-preset-bar"><div><strong>Fill the prompt</strong><p>Review the example before running the agent.</p></div><div className="ai-actions">{['Operations example', 'Review example'].map((label, index) => <button key={label} type="button" className="btn btn-secondary" disabled={loading} onClick={() => { setInputs({ ...inputs, [tab]: examples[tab][index] }); setResult(null); }}>{label}</button>)}</div></div>
+      <label htmlFor="agent-input" style={{ color: '#a0a0b0', fontSize: 12 }}>{active[2]}</label><textarea id="agent-input" style={inputStyle} value={inputs[tab]} onChange={(event) => setInputs({ ...inputs, [tab]: event.target.value })} />
+      <button type="button" style={{ padding: '12px 24px', background: '#e94560', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }} onClick={run} disabled={loading || !inputs[tab].trim()}>{loading ? '⏳ Analyzing...' : active[3]}</button>
+    </div>
+    <AIReport response={result} title={active[1]} />
+  </div>;
+}
